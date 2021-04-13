@@ -12,7 +12,7 @@ You'll also need the `snyk` cli installed on the machine too.
 
 
 ```bash
-snyk-history-monitor --org=<SNYK_ORG> --product=<PRODUCT_NAME> --version=<RELEASE_VERSION> [your-chosen-language]
+snyk-history-scanner --org=<SNYK_ORG> --product=<PRODUCT_NAME> --version=<RELEASE_VERSION> [your-chosen-language]
 ```
 
 Where chosen language is as follows:
