@@ -21,7 +21,7 @@ func GetRootCommand() *cobra.Command {
 		Use:   "snyk-history-scanner",
 		Short: "A very thin wrapper around the Snyk CLI tool to make it possible to monitor old releases of versions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return execute(options)
+			return execute(options, args)
 		},
 	}
 	cmd.PersistentFlags().BoolVar(&options.dotnet, "dotnet", false, "if dotnet projects should be scanned")
@@ -33,7 +33,7 @@ func GetRootCommand() *cobra.Command {
 	return cmd
 }
 
-func execute(options) error {
+func execute(opts options, snykArgs []string) error {
 	_, err := exec.LookPath("snyk")
 	if err != nil {
 		log.Fatal("snyk is not available on the PATH")
