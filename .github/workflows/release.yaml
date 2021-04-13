@@ -1,0 +1,62 @@
+name: Release
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - name: Set release version number
+        id: release_version
+        run: |
+          github_tag_version_num="${GITHUB_REF/refs\/tags\/v/}"
+          echo "::set-output name=RELEASE_VERSION_NUM::$github_tag_version_num"
+      - name: Build multi-arch
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o snyk-history-scanner.exe
+          GOOS=darwin GOARCH=amd64 go build -o snyk-history-scanner-darwin
+          GOOS=linux GOARCH=amd64 go build -o snyk-history-scanner-linux
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ steps.release_version.outputs.RELEASE_VERSION_NUM }}
+          draft: false
+      - name: upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./snyk-history-scanner.exe
+          asset_name: snyk-history-scanner.exe
+          asset_content_type: application/octet-stream
+      - name: upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./snyk-history-scanner-darwin
+          asset_name: snyk-history-scanner-darwin
+          asset_content_type: application/octet-stream
+      - name: upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./snyk-history-scanner-linux
+          asset_name: snyk-history-scanner-linux
+          asset_content_type: application/octet-stream
