@@ -52,7 +52,7 @@ func GetRootCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&options.golang, "golang", false, "if golang projects should be scanned")
 	cmd.Flags().BoolVar(&options.java, "java", false, "if java projects should be scanned")
 	cmd.Flags().BoolVar(&options.javascript, "npm", false, "if npm projects should be scanned")
-	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories (supports glob syntax)")
+	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories (must be relative to where you're running this cli from)")
 	cmd.Flags().BoolVar(&options.debug, "debug", false, "run in debug mode")
 
 	return cmd
