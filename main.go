@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"os"
 
 	"github.com/cjheppell/snyk-history-scanner/cmd"
 )
@@ -9,6 +10,6 @@ import (
 func main() {
 	rootCmd := cmd.GetRootCommand()
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
