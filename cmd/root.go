@@ -8,10 +8,11 @@ import (
 )
 
 type options struct {
-	dotnet bool
-	golang bool
-	java   bool
-	npm    bool
+	dotnet       bool
+	golang       bool
+	java         bool
+	npm          bool
+	excludedDirs []string
 }
 
 func GetRootCommand() *cobra.Command {
@@ -27,6 +28,7 @@ func GetRootCommand() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.golang, "golang", false, "if golang projects should be scanned")
 	cmd.PersistentFlags().BoolVar(&options.java, "java", false, "if java projects should be scanned")
 	cmd.PersistentFlags().BoolVar(&options.npm, "npm", false, "if npm projects should be scanned")
+	cmd.PersistentFlags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories (supports glob syntax)")
 
 	return cmd
 }
