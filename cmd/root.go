@@ -123,7 +123,7 @@ func runSnykMonitor(file, productName, projectName, version, snykOrg string, ext
 
 func isManifestMatch(filename string, manifests []string) bool {
 	for _, manifest := range manifests {
-		if filename == manifest {
+		if strings.EqualFold(filename, manifest) {
 			return true
 		}
 	}
