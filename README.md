@@ -32,6 +32,14 @@ This will enumerate all the files on disk and find manifest files relevant to yo
 snyk monitor --file=<relative_path_to_manifest> --project-name=<relative_path_to_manifest>@<version> --remote-repo-url=<product_name>@<release_version> --org=<snyk_org>
 ```
 
+### Additional snyk monitor flags
+
+To pass extra Snyk options to the generated `snyk monitor` calls, you can use the following method:
+
+```bash
+snyk-history-scanner --org=foo --product=bar --version=0.1 --golang -- --policy-path=.snyk --dev
+```
+
 ## Credit
 
 This is heavily inspired, and effectively a binary wrapper, for the code available here: https://github.com/paulsnyk/snyk-monitor-all-projects/blob/c95eee6fd0ad637e29158b24d9cc5e45e09eeba0/monitor.js
