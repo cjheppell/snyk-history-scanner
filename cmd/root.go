@@ -65,8 +65,8 @@ func execute(opts options, snykArgs []string) error {
 	dirExcludes = append(dirExcludes, opts.excludedDirs...)
 	manifests := getManifests(opts)
 	cmdFields := strings.Fields(opts.snykCmd)
-	cmd :=cmdFields[0];
-	cmdArgs :=cmdFields[1:];
+	cmd := cmdFields[0]
+	cmdArgs := cmdFields[1:]
 
 	_, err := exec.LookPath(cmd)
 	if err != nil {
