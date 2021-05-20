@@ -21,6 +21,7 @@ type options struct {
 	snykOrg        string
 	productName    string
 	productVersion string
+	snykCmd        string
 	debug          bool
 }
 
@@ -53,6 +54,7 @@ func GetRootCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&options.java, "java", false, "if java projects should be scanned")
 	cmd.Flags().BoolVar(&options.javascript, "npm", false, "if npm projects should be scanned")
 	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories (must be relative to where you're running this cli from)")
+	cmd.Flags().StringVar(&options.snykCmd, "snyk-cmd", "snyk", "the command to run Snyk, i.e. 'npx snyk'")
 	cmd.Flags().BoolVar(&options.debug, "debug", false, "run in debug mode")
 
 	return cmd
@@ -63,11 +65,15 @@ func execute(opts options, snykArgs []string) error {
 	dirExcludes = append(dirExcludes, opts.excludedDirs...)
 	manifests := getManifests(opts)
 
-	_, err := exec.LookPath("snyk")
-	if err != nil {
-		return err
+	if (opts.snykCmd == "snyk")	{
+		_, err := exec.LookPath("snyk")
+		if err != nil {
+			return err
+		}
+		log.Debug("found snyk cli on path")
+	} else {
+		log.Debugf("using cmd '%s'", opts.snykCmd)
 	}
-	log.Debug("found snyk cli on path")
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -92,7 +98,7 @@ func execute(opts options, snykArgs []string) error {
 				fmt.Printf("scanning '%s' with snyk...\n", path)
 				log.Debugf("file '%s' was manifest match", path)
 				manifestRelativePath := getManifestRelativePath(workingDir, path)
-				err := runSnykMonitor(manifestRelativePath, opts.productName, manifestRelativePath, opts.productVersion, opts.snykOrg, snykArgs)
+				err := runSnykMonitor(manifestRelativePath, opts.productName, manifestRelativePath, opts.productVersion, opts.snykOrg, opts.snykCmd, snykArgs)
 				if err != nil {
 					return err
 				}
@@ -104,13 +110,13 @@ func execute(opts options, snykArgs []string) error {
 	return err
 }
 
-func runSnykMonitor(file, productName, projectName, version, snykOrg string, extraArgs []string) error {
+func runSnykMonitor(file, productName, projectName, version, snykOrg string, snykCmd string, extraArgs []string) error {
 	args := []string{"monitor", fmt.Sprintf("--file=%s", file), fmt.Sprintf("--project-name=%s@%s", projectName, version), fmt.Sprintf("--remote-repo-url=%s@%s", productName, version), fmt.Sprintf("--org=%s", snykOrg)}
 	args = append(args, extraArgs...)
 
-	fmt.Printf("running 'snyk %s'\n", strings.Join(args, " "))
+	fmt.Printf("running '%s %s'\n", snykCmd, strings.Join(args, " "))
 
-	cmd := exec.Command("snyk", args...)
+	cmd := exec.Command(snykCmd, args...)
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println(string(output))
