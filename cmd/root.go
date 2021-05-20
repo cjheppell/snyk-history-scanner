@@ -64,16 +64,15 @@ func execute(opts options, snykArgs []string) error {
 	dirExcludes := defaultDirExcludes
 	dirExcludes = append(dirExcludes, opts.excludedDirs...)
 	manifests := getManifests(opts)
+	cmdFields := strings.Fields(opts.snykCmd)
+	cmd :=cmdFields[0];
+	cmdArgs :=cmdFields[1:];
 
-	if (opts.snykCmd == "snyk")	{
-		_, err := exec.LookPath("snyk")
-		if err != nil {
-			return err
-		}
-		log.Debug("found snyk cli on path")
-	} else {
-		log.Debugf("using cmd '%s'", opts.snykCmd)
+	_, err := exec.LookPath(cmd)
+	if err != nil {
+		return err
 	}
+	log.Debugf("found '%s' on path", cmd)
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -98,7 +97,7 @@ func execute(opts options, snykArgs []string) error {
 				fmt.Printf("scanning '%s' with snyk...\n", path)
 				log.Debugf("file '%s' was manifest match", path)
 				manifestRelativePath := getManifestRelativePath(workingDir, path)
-				err := runSnykMonitor(manifestRelativePath, opts.productName, manifestRelativePath, opts.productVersion, opts.snykOrg, opts.snykCmd, snykArgs)
+				err := runSnykMonitor(manifestRelativePath, opts.productName, manifestRelativePath, opts.productVersion, opts.snykOrg, cmd, cmdArgs, snykArgs)
 				if err != nil {
 					return err
 				}
@@ -110,8 +109,9 @@ func execute(opts options, snykArgs []string) error {
 	return err
 }
 
-func runSnykMonitor(file, productName, projectName, version, snykOrg string, snykCmd string, extraArgs []string) error {
+func runSnykMonitor(file, productName, projectName, version, snykOrg string, snykCmd string, cmdArgs []string, extraArgs []string) error {
 	args := []string{"monitor", fmt.Sprintf("--file=%s", file), fmt.Sprintf("--project-name=%s@%s", projectName, version), fmt.Sprintf("--remote-repo-url=%s@%s", productName, version), fmt.Sprintf("--org=%s", snykOrg)}
+	args = append(cmdArgs, args...)
 	args = append(args, extraArgs...)
 
 	fmt.Printf("running '%s %s'\n", snykCmd, strings.Join(args, " "))
