@@ -25,37 +25,38 @@ type options struct {
 	debug          bool
 }
 
+var opts = options{}
+
 var defaultDirExcludes = []string{
 	"node_modules",
 	".git",
 }
 
 func GetRootCommand() *cobra.Command {
-	options := options{}
 	cmd := &cobra.Command{
 		Use:   "snyk-history-scanner",
 		Short: "A very thin wrapper around the Snyk CLI tool to make it possible to monitor old releases of versions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if options.debug {
+			if opts.debug {
 				log.SetLevel(log.DebugLevel)
 			}
-			return execute(options, args)
+			return execute(opts, args)
 		},
 	}
-	cmd.Flags().StringVar(&options.productName, "product", "", "the name of the product being scanned")
-	cmd.Flags().StringVar(&options.productVersion, "version", "", "the version of the product being scanned")
-	cmd.Flags().StringVar(&options.snykOrg, "org", "", "the snyk organisation this scan should be a part of")
+	cmd.Flags().StringVar(&opts.productName, "product", "", "the name of the product being scanned")
+	cmd.Flags().StringVar(&opts.productVersion, "version", "", "the version of the product being scanned")
+	cmd.Flags().StringVar(&opts.snykOrg, "org", "", "the snyk organisation this scan should be a part of")
 	cmd.MarkFlagRequired("product")
 	cmd.MarkFlagRequired("version")
 	cmd.MarkFlagRequired("org")
 
-	cmd.Flags().BoolVar(&options.dotnet, "dotnet", false, "if dotnet projects should be scanned")
-	cmd.Flags().BoolVar(&options.golang, "golang", false, "if golang projects should be scanned")
-	cmd.Flags().BoolVar(&options.java, "java", false, "if java projects should be scanned")
-	cmd.Flags().BoolVar(&options.javascript, "npm", false, "if npm projects should be scanned")
-	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories/files (must be relative to where you're running this cli from)")
-	cmd.Flags().StringVar(&options.snykCmd, "snyk-cmd", "snyk", "the command to run Snyk, i.e. 'npx snyk'")
-	cmd.Flags().BoolVar(&options.debug, "debug", false, "run in debug mode")
+	cmd.Flags().BoolVar(&opts.dotnet, "dotnet", false, "if dotnet projects should be scanned")
+	cmd.Flags().BoolVar(&opts.golang, "golang", false, "if golang projects should be scanned")
+	cmd.Flags().BoolVar(&opts.java, "java", false, "if java projects should be scanned")
+	cmd.Flags().BoolVar(&opts.javascript, "npm", false, "if npm projects should be scanned")
+	cmd.Flags().StringSliceVar(&opts.exclusions, "exclude", []string{}, "pass --exclude multiple times to exclude these directories/files (must be relative to where you're running this cli from)")
+	cmd.Flags().StringVar(&opts.snykCmd, "snyk-cmd", "snyk", "the command to run Snyk, i.e. 'npx snyk'")
+	cmd.Flags().BoolVar(&opts.debug, "debug", false, "run in debug mode")
 
 	return cmd
 }
