@@ -17,7 +17,7 @@ type options struct {
 	golang         bool
 	java           bool
 	javascript     bool
-	excludedDirs   []string
+	exclusions     []string
 	snykOrg        string
 	productName    string
 	productVersion string
@@ -53,7 +53,7 @@ func GetRootCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&options.golang, "golang", false, "if golang projects should be scanned")
 	cmd.Flags().BoolVar(&options.java, "java", false, "if java projects should be scanned")
 	cmd.Flags().BoolVar(&options.javascript, "npm", false, "if npm projects should be scanned")
-	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories (must be relative to where you're running this cli from)")
+	cmd.Flags().StringSliceVar(&options.excludedDirs, "exclude", []string{}, "pass --exclude multiple times to exclude these directories/files (must be relative to where you're running this cli from)")
 	cmd.Flags().StringVar(&options.snykCmd, "snyk-cmd", "snyk", "the command to run Snyk, i.e. 'npx snyk'")
 	cmd.Flags().BoolVar(&options.debug, "debug", false, "run in debug mode")
 
@@ -61,8 +61,8 @@ func GetRootCommand() *cobra.Command {
 }
 
 func execute(opts options, snykArgs []string) error {
-	dirExcludes := defaultDirExcludes
-	dirExcludes = append(dirExcludes, opts.excludedDirs...)
+	exclusions := defaultDirExcludes
+	exclusions = append(exclusions, opts.exclusions...)
 	manifests := getManifests(opts)
 	cmdFields := strings.Fields(opts.snykCmd)
 	cmd := cmdFields[0]
@@ -86,7 +86,7 @@ func execute(opts options, snykArgs []string) error {
 				return err
 			}
 
-			if in(info.Name(), dirExcludes) {
+			if in(info.Name(), exclusions) {
 				log.Debugf("skipping '%s' as it is excluded", path)
 				return filepath.SkipDir
 			}
