@@ -88,8 +88,12 @@ func execute(opts options, snykArgs []string) error {
 			}
 
 			if in(info.Name(), exclusions) {
-				log.Debugf("skipping '%s' as it is excluded", path)
-				return filepath.SkipDir
+				if info.IsDir() {
+					log.Debugf("skipping directory '%s' as it is excluded", path)
+					return filepath.SkipDir
+				}
+				log.Debugf("skipping file '%s' as it is excluded", path)
+				return nil
 			}
 
 			log.Debugf("inspecting file '%s'", path)
