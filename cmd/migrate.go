@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
@@ -87,10 +88,19 @@ func doMigrate(options migrateOpts) error {
 		}
 	}
 
+	orderedKeyes := make([]snyk.SnykApiProject, 0, len(snykProjectToTagMap))
+	for k := range snykProjectToTagMap {
+		orderedKeyes = append(orderedKeyes, k)
+	}
+
+	sort.Slice(orderedKeyes, func(i, j int) bool {
+		return strings.Compare(orderedKeyes[i].Name, orderedKeyes[j].Name) < 0
+	})
+
 	fmt.Println("")
 	fmt.Println("mapping generated:")
-	for k, v := range snykProjectToTagMap {
-		fmt.Printf("[%s] -> %s\n", k.Name, v.Name)
+	for _, key := range orderedKeyes {
+		fmt.Printf("[%s] -> %s\n", key.Name, snykProjectToTagMap[key].Name)
 	}
 
 	fmt.Println("")
