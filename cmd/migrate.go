@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
+	"github.com/cjheppell/snyk-history-scanner/pkg/migrationscan"
 	"github.com/cjheppell/snyk-history-scanner/pkg/snyk"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -66,6 +67,11 @@ func doMigrate(options migrateOpts) error {
 		return err
 	}
 
+	repoUrl, err := githubClient.GetRepoUrl(options.githubOwner, options.githubRepo)
+	if err != nil {
+		return err
+	}
+
 	projects, err := snykClient.ListProjectsInOrg(options.snykOrg)
 	if err != nil {
 		return err
@@ -114,6 +120,15 @@ func doMigrate(options migrateOpts) error {
 	if strings.TrimSpace(text) != "y" {
 		fmt.Println("aborting - 'y' was not specified")
 		return nil
+	}
+
+	for _, key := range orderedKeyes {
+		err := migrationscan.DoScan(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, snykProjectToTagMap[key])
+		if err != nil {
+			return err
+		}
+		// stop after the first for testing
+		break
 	}
 
 	// do the work
