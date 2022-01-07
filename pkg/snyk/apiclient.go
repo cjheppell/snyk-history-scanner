@@ -24,7 +24,7 @@ type snykApiListProjectsResp struct {
 }
 
 type SnykApiProject struct {
-	Name string `json:"name"`
+	Name string `json:"remoteRepoUrl"`
 	Id   string `json:"id"`
 }
 
@@ -51,8 +51,6 @@ func (c ApiClient) ListProjectsInOrg(org string) ([]SnykApiProject, error) {
 		return nil, err
 	}
 
-	fmt.Printf("body: %s\n", string(bodyBytes))
-
 	var apiResp snykApiListProjectsResp
 
 	err = json.Unmarshal(bodyBytes, &apiResp)
@@ -60,7 +58,17 @@ func (c ApiClient) ListProjectsInOrg(org string) ([]SnykApiProject, error) {
 		return nil, err
 	}
 
-	return apiResp.Projects, nil
+	projectsRecorded := map[string]bool{}
+	var uniqueProjects []SnykApiProject
+	for _, p := range apiResp.Projects {
+		if _, seen := projectsRecorded[p.Name]; seen {
+			continue
+		}
+		uniqueProjects = append(uniqueProjects, p)
+		projectsRecorded[p.Name] = true
+	}
+
+	return uniqueProjects, nil
 }
 
 func (c ApiClient) addAuthHeader(req *http.Request) {

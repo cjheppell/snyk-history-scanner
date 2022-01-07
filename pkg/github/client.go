@@ -27,7 +27,7 @@ func NewClient(token string) (*GithubClient, error) {
 	}, nil
 }
 
-type tag struct {
+type Tag struct {
 	Name   string `json:"name"`
 	Commit commit `json:"commit"`
 }
@@ -36,7 +36,7 @@ type commit struct {
 	SHA string `json:"sha"`
 }
 
-func (c GithubClient) ListTags(owner, repoName string) ([]tag, error) {
+func (c GithubClient) ListTags(owner, repoName string) ([]Tag, error) {
 	listOpts := &github.ListOptions{
 		PerPage: 30,
 	}
@@ -55,9 +55,9 @@ func (c GithubClient) ListTags(owner, repoName string) ([]tag, error) {
 		listOpts.Page = resp.NextPage
 	}
 
-	var tags []tag
+	var tags []Tag
 	for _, t := range allTags {
-		tags = append(tags, tag{
+		tags = append(tags, Tag{
 			Name: *t.Name,
 			Commit: commit{
 				SHA: *t.Commit.SHA,
