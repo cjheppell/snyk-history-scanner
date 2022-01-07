@@ -67,3 +67,12 @@ func (c GithubClient) ListTags(owner, repoName string) ([]Tag, error) {
 
 	return tags, nil
 }
+
+func (c GithubClient) GetRepoUrl(owner, repoName string) (string, error) {
+	r, _, err := c.client.Repositories.Get(context.TODO(), owner, repoName)
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetCloneURL(), nil
+}
