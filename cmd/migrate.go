@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
@@ -109,7 +110,12 @@ func doMigrate(options migrateOpts) error {
 
 func findMatch(tags []github.Tag, p snyk.SnykApiProject, productName string) *github.Tag {
 	tagToFind := strings.TrimPrefix(p.Name, fmt.Sprintf("%s@", productName))
+	if len(tagToFind) == 0 {
+		return nil
+	}
 	var bestMatch *github.Tag
+
+	// assuming tags are more specific than project names
 	for _, t := range tags {
 		// prefer shortest tag names
 		isBetterMatch := bestMatch == nil || len(t.Name) < len(bestMatch.Name)
@@ -118,5 +124,25 @@ func findMatch(tags []github.Tag, p snyk.SnykApiProject, productName string) *gi
 			bestMatch = &tag
 		}
 	}
+
+	if bestMatch == nil {
+		// didnt find a match
+		// try to find matching tags where their version suffix is a substring match of the version in the snyk project (plus an optional single suffix such as '/fix')
+
+		for _, t := range tags {
+			re := regexp.MustCompile(`^.*/((?:\d.?)+)(?:/\w+)?$`)
+			matches := re.FindStringSubmatch(t.Name)
+			if len(matches) != 2 {
+				continue
+			}
+			toCheck := matches[1]
+			isBetterMatch := bestMatch == nil
+			if strings.Contains(tagToFind, toCheck) && isBetterMatch {
+				tag := t
+				bestMatch = &tag
+			}
+		}
+	}
+
 	return bestMatch
 }
