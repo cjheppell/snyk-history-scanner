@@ -14,13 +14,14 @@ import (
 )
 
 type migrateOpts struct {
-	debug       bool
-	snykToken   string
-	productName string
-	snykOrg     string
-	githubToken string
-	githubOwner string
-	githubRepo  string
+	debug          bool
+	snykToken      string
+	productName    string
+	snykOrg        string
+	githubToken    string
+	githubUsername string
+	githubOwner    string
+	githubRepo     string
 }
 
 var migrateOptions = migrateOpts{}
@@ -40,6 +41,7 @@ func GetMigrateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&migrateOptions.snykOrg, "org", "", "the snyk organisation where existing snyk-history-scanner results reside")
 	cmd.Flags().StringVar(&migrateOptions.snykToken, "snykToken", "", "the snyk access token to use for accessing the Snyk API")
 
+	cmd.Flags().StringVar(&migrateOptions.githubUsername, "githubUsername", "", "the username upon who's behalf we will access the github API")
 	cmd.Flags().StringVar(&migrateOptions.githubToken, "githubToken", "", "the api token used for accessing the github api on behalf of the executing user")
 	cmd.Flags().StringVar(&migrateOptions.githubOwner, "githubOwner", "", "the owner of the github repo associated with this Snyk project")
 	cmd.Flags().StringVar(&migrateOptions.githubRepo, "githubRepo", "", "the github repo associated with this Snyk project")
@@ -48,6 +50,7 @@ func GetMigrateCommand() *cobra.Command {
 	cmd.MarkFlagRequired("org")
 	cmd.MarkFlagRequired("snykToken")
 
+	cmd.MarkFlagRequired("githubUsername")
 	cmd.MarkFlagRequired("githubToken")
 	cmd.MarkFlagRequired("githubOwner")
 	cmd.MarkFlagRequired("githubRepo")
