@@ -2,8 +2,10 @@ package migrationscan
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
@@ -47,6 +49,14 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		if err != nil {
 			return err
 		}
+		fmt.Println()
+
+		fmt.Printf("running prescan work...\n")
+		err = preScan(dir)
+		if err != nil {
+			return err
+		}
+		fmt.Println()
 
 		err = runSnykMonitor(tag.Name, productName, snykOrgName, snykToken)
 		if err != nil {
@@ -144,4 +154,99 @@ func runSnykMonitor(tagVersion, productName, snykOrg, snykToken string) error {
 	}
 
 	return nil
+}
+
+func preScan(repoRoot string) error {
+	var mvnExists, dotnetExists bool
+	_, err := exec.LookPath("mvn")
+	if err != nil {
+		fmt.Println("could not find mvn on the PATH, will not attempt to build Java projects")
+	}
+	mvnExists = err == nil
+
+	_, err = exec.LookPath("dotnet")
+	if err != nil {
+		fmt.Println("could not find mvn on the PATH, will not attempt to build dotnet projects")
+	}
+	dotnetExists = err == nil
+
+	if mvnExists {
+		return mvnInstall(repoRoot)
+	}
+
+	if dotnetExists {
+		return dotnetRestore(repoRoot)
+	}
+
+	return nil
+}
+
+func dotnetRestore(repoRoot string) error {
+	fmt.Println("enumerating .sln's and .csproj's to issue dotnet restore's before running Snyk scan")
+	return filepath.WalkDir(repoRoot, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		isCsProjOrSln := strings.HasSuffix(d.Name(), ".sln") || strings.HasSuffix(d.Name(), ".csproj")
+		if !d.IsDir() && isCsProjOrSln {
+			folder := filepath.Dir(path)
+
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			err = os.Chdir(folder)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				os.Chdir(wd)
+			}()
+
+			fmt.Printf("running dotnet restore for file %s\n", path)
+			cmd := exec.Command("dotnet", "restore", "--interactive", "--ignore-failed-sources")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
+			if err != nil {
+				fmt.Printf("dotnet restore failed for file: %s", path)
+			}
+		}
+		return nil
+	})
+}
+
+func mvnInstall(repoRoot string) error {
+	fmt.Println("enumerating pom.xml's to issue mvn install's before running Snyk scan")
+	return filepath.WalkDir(repoRoot, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		isPomXml := strings.HasSuffix(d.Name(), "pom.xml")
+		if !d.IsDir() && isPomXml {
+			folder := filepath.Dir(path)
+
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			err = os.Chdir(folder)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				os.Chdir(wd)
+			}()
+
+			fmt.Printf("running mvn install for file %s\n", path)
+			cmd := exec.Command("mvn", "install")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
+			if err != nil {
+				fmt.Printf("mvn install failed for file: %s", path)
+			}
+		}
+		return nil
+	})
 }
