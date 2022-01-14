@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
@@ -103,6 +104,7 @@ func doMigrate(options migrateOpts) error {
 		return strings.Compare(orderedKeyes[i].Name, orderedKeyes[j].Name) < 0
 	})
 
+promptInput:
 	fmt.Println("")
 	fmt.Println("mapping generated:")
 	for _, key := range orderedKeyes {
@@ -111,18 +113,29 @@ func doMigrate(options migrateOpts) error {
 
 	fmt.Println("")
 	fmt.Printf("We'll now automatically checkout each of the specified tags, and run the command `snyk monitor --project %s --target-reference <TAG_VERSION> --all-projects --org %s`\n\n", options.productName, options.snykOrg)
-	fmt.Print("Are you happy with the mapping of Snyk projects to github tags and want to run the above command for each tag [y/n]? ")
+	fmt.Print("Are you happy with the mapping of Snyk projects to github tags and want to run the above command for each tag [y/n/e]? ")
 	reader := bufio.NewReader(os.Stdin)
 	text, err := reader.ReadString('\n')
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(text) != "y" {
-		fmt.Println("aborting - 'y' was not specified")
+	text = strings.TrimSpace(text)
+	switch text {
+	case "y":
+		break
+	case "e":
+		orderedKeyes, err = modifyLoop(snykProjectToTagMap, orderedKeyes)
+		if err != nil {
+			return err
+		}
+		goto promptInput
+	default:
+		fmt.Println("aborting - 'y' or 'e' was not specified")
 		return nil
 	}
 
 	for _, key := range orderedKeyes {
+		fmt.Printf("scanning mapping [%s] -> %s\n", key.Name, snykProjectToTagMap[key].Name)
 		err := migrationscan.DoScan(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, snykProjectToTagMap[key])
 		if err != nil {
 			return err
@@ -134,6 +147,41 @@ func doMigrate(options migrateOpts) error {
 	// do the work
 
 	return nil
+}
+
+func modifyLoop(mapping map[snyk.SnykApiProject]github.Tag, orderedKeys []snyk.SnykApiProject) ([]snyk.SnykApiProject, error) {
+	keysToReturn := orderedKeys[:]
+	for {
+		fmt.Println("")
+		for i, k := range orderedKeys {
+			fmt.Printf("%d) scanning mapping [%s] -> %s\n", i, k.Name, mapping[k].Name)
+		}
+		fmt.Println("")
+		fmt.Print("enter the mapping id to skip, or type 'exit' if complete: ")
+		reader := bufio.NewReader(os.Stdin)
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		text = strings.TrimSpace(text)
+		switch text {
+		case "exit":
+			return keysToReturn, nil
+		default:
+			break
+		}
+
+		index, err := strconv.Atoi(text)
+		if err != nil {
+			return nil, err
+		}
+
+		if index < 0 || index >= len(orderedKeys) {
+			return nil, fmt.Errorf("invalid mapping index: %d", index)
+		}
+
+		keysToReturn = append(keysToReturn[:index], keysToReturn[index+1:]...)
+	}
 }
 
 func findMatch(tags []github.Tag, p snyk.SnykApiProject, productName string) *github.Tag {
