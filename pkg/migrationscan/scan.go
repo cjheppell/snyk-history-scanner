@@ -31,14 +31,19 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 	defer func() {
 		os.RemoveAll(dir)
 	}()
+	productDir := filepath.Join(dir, productName)
+	err = os.Mkdir(productDir, os.FileMode(0777))
+	if err != nil {
+		return err
+	}
 
-	fmt.Printf("cloning directory to %s, please wait...\n", dir)
-	repo, err := cloneToDir(githubToken, githubUsername, dir, repoUrl)
+	fmt.Printf("cloning directory to %s, please wait...\n", productDir)
+	repo, err := cloneToDir(githubToken, githubUsername, productDir, repoUrl)
 	if err != nil {
 		return fmt.Errorf("failed to clone github dir: %s", err)
 	}
 
-	err = os.Chdir(dir)
+	err = os.Chdir(productDir)
 	if err != nil {
 		return err
 	}
@@ -52,7 +57,7 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		fmt.Println()
 
 		fmt.Printf("running prescan work...\n")
-		err = preScan(dir)
+		err = preScan(productDir)
 		if err != nil {
 			return err
 		}
