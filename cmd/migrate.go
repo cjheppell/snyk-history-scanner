@@ -134,17 +134,14 @@ promptInput:
 		return nil
 	}
 
-	for _, key := range orderedKeyes {
-		fmt.Printf("scanning mapping [%s] -> %s\n", key.Name, snykProjectToTagMap[key].Name)
-		err := migrationscan.DoScan(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, snykProjectToTagMap[key])
-		if err != nil {
-			return err
-		}
-		// stop after the first for testing
-		break
+	tagsToScan := []github.Tag{}
+	for _, k := range orderedKeyes {
+		tagsToScan = append(tagsToScan, snykProjectToTagMap[k])
 	}
-
-	// do the work
+	err = migrationscan.DoScanMultiple(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, tagsToScan)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-func DoScan(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tag github.Tag) error {
+func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tags []github.Tag) error {
 	currentWd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func DoScan(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUse
 	}()
 
 	fmt.Printf("cloning directory to %s, please wait...\n", dir)
-	err = cloneToDir(githubToken, githubUsername, dir, repoUrl, tag.Commit.SHA)
+	repo, err := cloneToDir(githubToken, githubUsername, dir, repoUrl)
 	if err != nil {
 		return fmt.Errorf("failed to clone github dir: %s", err)
 	}
@@ -41,17 +41,32 @@ func DoScan(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUse
 		return err
 	}
 
-	err = runSnykMonitor(tag.Name, productName, snykOrgName, snykToken)
-	if err != nil {
-		return fmt.Errorf("failed to run snyk monitor: %s", err)
+	for _, tag := range tags {
+		fmt.Printf("checking out tag %s...\n", tag.Name)
+		err = checkoutHash(githubToken, githubUsername, repo, tag.Commit.SHA)
+		if err != nil {
+			return err
+		}
+
+		err = runSnykMonitor(tag.Name, productName, snykOrgName, snykToken)
+		if err != nil {
+			return fmt.Errorf("failed to run snyk monitor: %s", err)
+		}
+
+		err = gitClean(repo)
+		if err != nil {
+			return fmt.Errorf("failed to clean local worktree: %s", err)
+		}
+
+		// stop at the first for now
+		break
 	}
 
 	return nil
 }
 
-func cloneToDir(token, username, cloneDir, repoUrl, tagHash string) error {
-	var httpAuth *http.BasicAuth
-	httpAuth = &http.BasicAuth{
+func cloneToDir(token, username, cloneDir, repoUrl string) (*git.Repository, error) {
+	httpAuth := &http.BasicAuth{
 		Username: username,
 		Password: token,
 	}
@@ -63,10 +78,19 @@ func cloneToDir(token, username, cloneDir, repoUrl, tagHash string) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to plainclone github remote: %s", err)
+		return nil, fmt.Errorf("failed to plainclone github remote: %s", err)
 	}
 
-	err = repo.Fetch(&git.FetchOptions{
+	return repo, nil
+}
+
+func checkoutHash(token, username string, repo *git.Repository, hash string) error {
+	httpAuth := &http.BasicAuth{
+		Username: username,
+		Password: token,
+	}
+
+	err := repo.Fetch(&git.FetchOptions{
 		RefSpecs: []config.RefSpec{"+refs/pull/*:refs/remotes/origin/pull/*"},
 		Auth:     httpAuth,
 	})
@@ -79,17 +103,28 @@ func cloneToDir(token, username, cloneDir, repoUrl, tagHash string) error {
 		return fmt.Errorf("failed to get worktree for repository: %s", err)
 	}
 
-	hash, err := repo.ResolveRevision(plumbing.Revision(tagHash))
+	resolvedHash, err := repo.ResolveRevision(plumbing.Revision(hash))
 	if err != nil {
-		return fmt.Errorf("failed to convert %q to a valid hash: %s", tagHash, err)
+		return fmt.Errorf("failed to convert %q to a valid hash: %s", hash, err)
 	}
 
-	err = worktree.Checkout(&git.CheckoutOptions{Hash: *hash})
+	err = worktree.Checkout(&git.CheckoutOptions{Hash: *resolvedHash})
 	if err != nil {
 		return fmt.Errorf("failed to checkout worktree: %s", err)
 	}
 
 	return nil
+}
+
+func gitClean(repo *git.Repository) error {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	return worktree.Clean(&git.CleanOptions{
+		Dir: true,
+	})
 }
 
 func runSnykMonitor(tagVersion, productName, snykOrg, snykToken string) error {
