@@ -19,6 +19,7 @@ import (
 
 type migrateOpts struct {
 	debug          bool
+	parallelism    int
 	snykToken      string
 	productName    string
 	snykOrg        string
@@ -41,6 +42,8 @@ func GetMigrateCommand() *cobra.Command {
 			return doMigrate(migrateOptions)
 		},
 	}
+	cmd.Flags().IntVar(&migrateOptions.parallelism, "parallelism", 3, "how many concurrent git clones to run snyk scan against")
+
 	cmd.Flags().StringVar(&migrateOptions.productName, "product", "", "the name of the product being scanned")
 	cmd.Flags().StringVar(&migrateOptions.snykOrg, "org", "", "the snyk organisation where existing snyk-history-scanner results reside")
 	cmd.Flags().StringVar(&migrateOptions.snykToken, "snykToken", "", "the snyk access token to use for accessing the Snyk API")
@@ -141,7 +144,7 @@ promptInput:
 	}
 
 	errorChan := make(chan error)
-	cloneCount := 3
+	cloneCount := options.parallelism
 	subsetSize := len(tagsToScan) / cloneCount
 	remainder := len(tagsToScan) % cloneCount
 
