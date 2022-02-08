@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cjheppell/snyk-history-scanner/pkg/github"
 	"github.com/cjheppell/snyk-history-scanner/pkg/migrationscan"
@@ -138,11 +139,36 @@ promptInput:
 	for _, k := range orderedKeyes {
 		tagsToScan = append(tagsToScan, snykProjectToTagMap[k])
 	}
-	err = migrationscan.DoScanMultiple(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, tagsToScan)
-	if err != nil {
-		return err
+
+	errorChan := make(chan error)
+	cloneCount := 3
+	subsetSize := len(tagsToScan) / cloneCount
+	remainder := len(tagsToScan) % cloneCount
+
+	wg := sync.WaitGroup{}
+	wg.Add(cloneCount)
+	for i := 0; i < cloneCount; i++ {
+		extra := 0
+		if i == cloneCount-1 {
+			extra = remainder
+		}
+		tagSubset := tagsToScan[subsetSize*i : subsetSize*(i+1)+extra]
+
+		go func() {
+			defer wg.Done()
+
+			migrationscan.DoScanMultiple(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, tagSubset, errorChan)
+		}()
 	}
 
+	go func() {
+		for {
+			err := <-errorChan
+			fmt.Fprint(os.Stderr, err)
+		}
+	}()
+
+	wg.Wait()
 	return nil
 }
 

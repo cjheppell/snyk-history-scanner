@@ -15,10 +15,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tags []github.Tag) error {
+func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tags []github.Tag, errChan chan error) {
 	dir, err := os.MkdirTemp("", "snyk-history-scanner*")
 	if err != nil {
-		return err
+		errChan <- err
 	}
 	defer func() {
 		os.RemoveAll(dir)
@@ -26,45 +26,43 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 	productDir := filepath.Join(dir, productName)
 	err = os.Mkdir(productDir, os.FileMode(0777))
 	if err != nil {
-		return err
+		errChan <- err
 	}
 
 	fmt.Printf("cloning directory to %s, please wait...\n", productDir)
 	repo, err := cloneToDir(githubToken, githubUsername, productDir, repoUrl)
 	if err != nil {
-		return fmt.Errorf("failed to clone github dir: %s", err)
+		errChan <- fmt.Errorf("failed to clone github dir: %s", err)
 	}
 
 	for _, tag := range tags {
 		fmt.Printf("checking out tag %s...\n", tag.Name)
 		err = checkoutHash(githubToken, githubUsername, repo, tag.Commit.SHA)
 		if err != nil {
-			return err
+			errChan <- err
 		}
 		fmt.Println()
 
 		fmt.Printf("running prescan work...\n")
 		err = preScan(productDir)
 		if err != nil {
-			return err
+			errChan <- err
 		}
 		fmt.Println()
 
 		err = runSnykMonitor(tag.Name, snykOrgName, snykToken, productDir)
 		if err != nil {
-			return fmt.Errorf("failed to run snyk monitor: %s", err)
+			errChan <- fmt.Errorf("failed to run snyk monitor: %s", err)
 		}
 
 		err = gitClean(repo)
 		if err != nil {
-			return fmt.Errorf("failed to clean local worktree: %s", err)
+			errChan <- fmt.Errorf("failed to clean local worktree: %s", err)
 		}
 
 		// stop at the first for now
 		break
 	}
-
-	return nil
 }
 
 func cloneToDir(token, username, cloneDir, repoUrl string) (*git.Repository, error) {
