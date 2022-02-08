@@ -16,14 +16,6 @@ import (
 )
 
 func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tags []github.Tag) error {
-	currentWd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		os.Chdir(currentWd)
-	}()
-
 	dir, err := os.MkdirTemp("", "snyk-history-scanner*")
 	if err != nil {
 		return err
@@ -43,11 +35,6 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		return fmt.Errorf("failed to clone github dir: %s", err)
 	}
 
-	err = os.Chdir(productDir)
-	if err != nil {
-		return err
-	}
-
 	for _, tag := range tags {
 		fmt.Printf("checking out tag %s...\n", tag.Name)
 		err = checkoutHash(githubToken, githubUsername, repo, tag.Commit.SHA)
@@ -63,7 +50,7 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		}
 		fmt.Println()
 
-		err = runSnykMonitor(tag.Name, productName, snykOrgName, snykToken)
+		err = runSnykMonitor(tag.Name, snykOrgName, snykToken, productDir)
 		if err != nil {
 			return fmt.Errorf("failed to run snyk monitor: %s", err)
 		}
@@ -142,7 +129,7 @@ func gitClean(repo *git.Repository) error {
 	})
 }
 
-func runSnykMonitor(tagVersion, productName, snykOrg, snykToken string) error {
+func runSnykMonitor(tagVersion, snykOrg, snykToken, productDir string) error {
 	// we want to ignore paket for our use cases
 	excludePaket := "--exclude=paket.dependencies,paket.lock"
 	args := []string{"monitor", fmt.Sprintf("--org=%s", snykOrg), fmt.Sprintf("--target-reference=%s", tagVersion), "--all-projects", excludePaket}
@@ -152,6 +139,7 @@ func runSnykMonitor(tagVersion, productName, snykOrg, snykToken string) error {
 	cmd := exec.Command("snyk", args...)
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("SNYK_TOKEN=%s", snykToken))
+	cmd.Dir = productDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -198,22 +186,11 @@ func dotnetRestore(repoRoot string) error {
 		if !d.IsDir() && isCsProjOrSln {
 			folder := filepath.Dir(path)
 
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			err = os.Chdir(folder)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				os.Chdir(wd)
-			}()
-
 			fmt.Printf("running dotnet restore for file %s\n", path)
 			cmd := exec.Command("dotnet", "restore", "--interactive", "--ignore-failed-sources")
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
+			cmd.Dir = folder
 			err = cmd.Run()
 			if err != nil {
 				fmt.Printf("dotnet restore failed for file: %s", path)
@@ -233,22 +210,11 @@ func mvnInstall(repoRoot string) error {
 		if !d.IsDir() && isPomXml {
 			folder := filepath.Dir(path)
 
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			err = os.Chdir(folder)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				os.Chdir(wd)
-			}()
-
 			fmt.Printf("running mvn install for file %s\n", path)
 			cmd := exec.Command("mvn", "install")
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
+			cmd.Dir = folder
 			err = cmd.Run()
 			if err != nil {
 				fmt.Printf("mvn install failed for file: %s", path)
