@@ -143,7 +143,9 @@ func gitClean(repo *git.Repository) error {
 }
 
 func runSnykMonitor(tagVersion, productName, snykOrg, snykToken string) error {
-	args := []string{"monitor", fmt.Sprintf("--org=%s", snykOrg), fmt.Sprintf("--target-reference=%s", tagVersion), "--all-projects"}
+	// we want to ignore paket for our use cases
+	excludePaket := "--exclude=paket.dependencies,paket.lock"
+	args := []string{"monitor", fmt.Sprintf("--org=%s", snykOrg), fmt.Sprintf("--target-reference=%s", tagVersion), "--all-projects", excludePaket}
 
 	fmt.Printf("running snyk %s\n", strings.Join(args, " "))
 
