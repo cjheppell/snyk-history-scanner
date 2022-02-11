@@ -59,9 +59,6 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		if err != nil {
 			errChan <- fmt.Errorf("failed to clean local worktree: %s", err)
 		}
-
-		// stop at the first for now
-		break
 	}
 }
 
