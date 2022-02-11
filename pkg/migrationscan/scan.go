@@ -160,12 +160,22 @@ func preScan(repoRoot string) error {
 	}
 	dotnetExists = err == nil
 
+	errs := []error{}
 	if mvnExists {
-		return mvnInstall(repoRoot)
+		errs = append(errs, mvnInstall(repoRoot))
 	}
 
 	if dotnetExists {
-		return dotnetRestore(repoRoot)
+		errs = append(errs, dotnetRestore(repoRoot))
+	}
+
+	sb := strings.Builder{}
+	for _, err := range errs {
+		sb.WriteString(err.Error())
+	}
+
+	if sb.Len() > 0 {
+		return fmt.Errorf(sb.String())
 	}
 
 	return nil
