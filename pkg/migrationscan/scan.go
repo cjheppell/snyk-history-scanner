@@ -171,7 +171,9 @@ func preScan(repoRoot string) error {
 
 	sb := strings.Builder{}
 	for _, err := range errs {
-		sb.WriteString(err.Error())
+		if err != nil {
+			sb.WriteString(err.Error())
+		}
 	}
 
 	if sb.Len() > 0 {
