@@ -39,7 +39,7 @@ func GetMigrateCommand() *cobra.Command {
 			if migrateOptions.debug {
 				log.SetLevel(log.DebugLevel)
 			}
-			return doMigrate(migrateOptions)
+			return doMigrate(migrateOptions, args)
 		},
 	}
 	cmd.Flags().IntVar(&migrateOptions.parallelism, "parallelism", 3, "how many concurrent git clones to run snyk scan against")
@@ -65,7 +65,7 @@ func GetMigrateCommand() *cobra.Command {
 	return cmd
 }
 
-func doMigrate(options migrateOpts) error {
+func doMigrate(options migrateOpts, extraArgs []string) error {
 	snykClient := snyk.NewApiClient(options.snykToken)
 	githubClient, err := github.NewClient(options.githubToken)
 	if err != nil {
@@ -160,7 +160,7 @@ promptInput:
 		go func() {
 			defer wg.Done()
 
-			migrationscan.DoScanMultiple(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, tagSubset, errorChan)
+			migrationscan.DoScanMultiple(options.productName, options.snykOrg, options.snykToken, repoUrl, options.githubToken, options.githubUsername, extraArgs, tagSubset, errorChan)
 		}()
 	}
 

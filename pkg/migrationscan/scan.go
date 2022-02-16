@@ -15,7 +15,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, tags []github.Tag, errChan chan error) {
+func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, githubUsername string, extraArgs []string, tags []github.Tag, errChan chan error) {
 	dir, err := os.MkdirTemp("", "snyk-history-scanner*")
 	if err != nil {
 		errChan <- err
@@ -50,7 +50,7 @@ func DoScanMultiple(productName, snykOrgName, snykToken, repoUrl, githubToken, g
 		}
 		fmt.Println()
 
-		err = runSnykMonitor(tag.Name, snykOrgName, snykToken, productDir)
+		err = runSnykMonitor(tag.Name, snykOrgName, snykToken, productDir, productName, extraArgs)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to run snyk monitor: %s", err)
 		}
@@ -124,10 +124,11 @@ func gitClean(repo *git.Repository) error {
 	})
 }
 
-func runSnykMonitor(tagVersion, snykOrg, snykToken, productDir string) error {
-	// we want to ignore paket for our use cases
-	excludePaket := "--exclude=paket.dependencies,paket.lock"
-	args := []string{"monitor", fmt.Sprintf("--org=%s", snykOrg), fmt.Sprintf("--target-reference=%s", tagVersion), "--all-projects", excludePaket}
+func runSnykMonitor(tagVersion, snykOrg, snykToken, productDir, productName string, extraArgs []string) error {
+	// we want to ignore paket and python for our use cases
+	excludePaket := "--exclude=paket.dependencies,paket.lock,requirements.txt"
+	args := []string{"monitor", fmt.Sprintf("--org=%s", snykOrg), fmt.Sprintf("--target-reference=%s", tagVersion), "--all-projects", excludePaket, fmt.Sprintf("--project-name=%s", productName)}
+	args = append(args, extraArgs...)
 
 	fmt.Printf("running snyk %s\n", strings.Join(args, " "))
 
