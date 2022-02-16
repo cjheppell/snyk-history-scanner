@@ -161,6 +161,18 @@ func preScan(repoRoot string) error {
 	}
 	dotnetExists = err == nil
 
+	var npmExists, yarnExists bool
+	_, err = exec.LookPath("npm")
+	if err != nil {
+		fmt.Println("could not find npm on the PATH, will not attempt to restore npm packages")
+	}
+	npmExists = err == nil
+	_, err = exec.LookPath("yarn")
+	if err != nil {
+		fmt.Println("could not find yarn on the PATH, will not attempt to restore npm packages")
+	}
+	yarnExists = err == nil
+
 	errs := []error{}
 	if mvnExists {
 		errs = append(errs, mvnInstall(repoRoot))
@@ -168,6 +180,10 @@ func preScan(repoRoot string) error {
 
 	if dotnetExists {
 		errs = append(errs, dotnetRestore(repoRoot))
+	}
+
+	if npmExists && yarnExists {
+		errs = append(errs, npmYarnRestore(repoRoot))
 	}
 
 	sb := strings.Builder{}
@@ -202,6 +218,40 @@ func dotnetRestore(repoRoot string) error {
 			err = cmd.Run()
 			if err != nil {
 				fmt.Printf("dotnet restore failed for file: %s", path)
+			}
+		}
+		return nil
+	})
+}
+
+func npmYarnRestore(repoRoot string) error {
+	fmt.Println("enumerating package.json's to issue npm and yarn installs before running Snyk scan")
+	return filepath.WalkDir(repoRoot, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		isPackageJson := strings.EqualFold(d.Name(), "package.json")
+		if !d.IsDir() && isPackageJson {
+			folder := filepath.Dir(path)
+
+			fmt.Printf("running npm install for file %s\n", path)
+			cmd := exec.Command("npm", "install")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Dir = folder
+			npmErr := cmd.Run()
+			if npmErr != nil {
+				fmt.Printf("npm restore failed for file: %s", path)
+			}
+
+			fmt.Printf("running yarn install for file %s\n", path)
+			cmd = exec.Command("yarn")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Dir = folder
+			yarnErr := cmd.Run()
+			if yarnErr != nil {
+				fmt.Printf("yarn restore failed for file: %s", path)
 			}
 		}
 		return nil
