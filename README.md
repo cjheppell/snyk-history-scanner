@@ -1,3 +1,11 @@
+# ⚠️ Superseded by native support in Snyk CLI ⚠️
+
+**This workaround for historical scanning has been superseded by Snyk's native support for scanning specific versions of code over time. See https://docs.snyk.io/snyk-cli/secure-your-projects-in-the-long-term/grouping-projects-by-branch-or-version for more information.**
+
+The repo is left for documentation purposes, but for scanning specified versions of code, you should be using `--target-reference` as provided by the Snyk CLI.
+
+---
+
 # snyk-history-scanner
 
 A very thin wrapper around the Snyk CLI tool to make it possible to monitor specific versioned releases of software.
